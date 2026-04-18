@@ -1,0 +1,23 @@
+# 摄像头配置
+cameras:
+  - name: "camera1"
+    ip: "192.168.1.101"
+    port: 554
+    username: "admin"
+    password: "zl10020101!"
+  
+  - name: "camera2"
+    ip: "192.168.1.102"
+    port: 554
+    username: "admin"
+    password: "zl10020101!"
+
+# 录制配置
+recording:
+  segment_duration: 60  # 视频片段时长（秒）
+  video_root: "/recordings"  # 视频存储根目录
+  retention_days: 7  # 保留天数
+
+# 清理配置
+cleanup:
+  interval_hours: 6  # 清理间隔（小时）
