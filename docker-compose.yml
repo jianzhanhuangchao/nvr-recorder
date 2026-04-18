@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  nvr-recorder:
+    build: .
+    container_name: nvr-recorder
+    restart: unless-stopped
+    volumes:
+      - ./recordings:/recordings
+      - ./config.yaml:/config/config.yaml:ro
+    environment:
+      - TZ=Asia/Shanghai
+    network_mode: host
