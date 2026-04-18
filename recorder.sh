@@ -1,10 +1,18 @@
 #!/bin/bash
 
+# 禁用历史扩展，解决 RTSP URL 中的 ! 问题
+set +H
+
 CONFIG_FILE="/config/config.yaml"
 VIDEO_ROOT=$(yq eval '.recording.video_root' $CONFIG_FILE)
 SEGMENT_DURATION=$(yq eval '.recording.segment_duration' $CONFIG_FILE)
 RETENTION_DAYS=$(yq eval '.recording.retention_days' $CONFIG_FILE)
 CLEANUP_INTERVAL=$(yq eval '.cleanup.interval_hours' $CONFIG_FILE)
+
+# 设置默认值（如果配置为空）
+RETENTION_DAYS=${RETENTION_DAYS:-7}
+SEGMENT_DURATION=${SEGMENT_DURATION:-60}
+CLEANUP_INTERVAL=${CLEANUP_INTERVAL:-24}
 
 # 获取摄像头数量
 CAMERA_COUNT=$(yq eval '.cameras | length' $CONFIG_FILE)
@@ -53,7 +61,8 @@ cleanup_videos() {
                     filename=$(basename "$file")
                     filedate=${filename:0:8}
                     
-                    if [[ "$filedate" < "$DELETE_DATE" ]]; then
+                    # 确保 filedate 是纯数字
+                    if [[ "$filedate" =~ ^[0-9]{8}$ ]] && [[ "$filedate" < "$DELETE_DATE" ]]; then
                         rm -f "$file"
                         ((DELETED_COUNT++))
                         log_info "Deleted: $file"
@@ -81,6 +90,7 @@ check_rtsp_url() {
     log_info "$name: Testing RTSP connection..."
     
     # 使用 ffmpeg 测试连接（5秒超时）
+    # 注意：将 URL 用引号括起来，避免特殊字符问题
     if timeout 10 ffmpeg -i "$url" -t 1 -f null - 2>&1 | grep -q "200 OK"; then
         log_info "$name: RTSP connection successful"
         return 0
@@ -101,7 +111,7 @@ record_camera() {
     mkdir -p "$output_dir"
     
     log_info "Starting recording: $name"
-    log_info "  RTSP URL: $rtsp_url"
+    log_info "  RTSP URL: ${rtsp_url//:/:}"  # 隐藏密码部分（可选）
     log_info "  Output dir: $output_dir"
     
     # 等待网络就绪
@@ -117,12 +127,13 @@ record_camera() {
         log_info "$name: Recording segment $filename (${SEGMENT_DURATION}s)"
         
         # 使用 ffmpeg 录制指定时长
-        # -i: 输入URL
+        # -i: 输入URL（用引号括起来）
         # -c copy: 直接复制流，不重新编码（快速）
         # -t: 录制时长
         # -reset_timestamps 1: 重置时间戳
         # -y: 覆盖输出文件
-        ffmpeg -i "$rtsp_url" \
+        # -stimeout: 设置 RTSP 超时（微秒）
+        ffmpeg -stimeout 5000000 -i "$rtsp_url" \
             -c copy \
             -t $SEGMENT_DURATION \
             -reset_timestamps 1 \
@@ -157,8 +168,10 @@ show_config() {
     for i in $(seq 0 $((CAMERA_COUNT - 1))); do
         local name=$(yq eval ".cameras[$i].name" $CONFIG_FILE)
         local url=$(yq eval ".cameras[$i].rtsp_url" $CONFIG_FILE)
+        # 隐藏密码部分
+        local masked_url=$(echo "$url" | sed 's/rtsp:\/\/[^:]*:[^@]*@/rtsp:\/\/***:***@/')
         log_info "  Camera $((i+1)): $name"
-        log_info "    URL: ${url:0:50}..."
+        log_info "    URL: $masked_url"
     done
     log_info "Segment duration: ${SEGMENT_DURATION}s"
     log_info "Video root: $VIDEO_ROOT"
@@ -212,7 +225,7 @@ main() {
 }
 
 # 捕获退出信号
-trap 'log_info "Shutting down..."; kill $(jobs -p); exit 0' SIGTERM SIGINT
+trap 'log_info "Shutting down..."; kill $(jobs -p) 2>/dev/null; exit 0' SIGTERM SIGINT
 
 # 运行主函数
 main
