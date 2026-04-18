@@ -1,16 +1,7 @@
 # 摄像头配置
 cameras:
-  - name: "camera1"
-    ip: "192.168.1.101"
-    port: 554
-    username: "admin"
-    password: "zl10020101!"
-  
-  - name: "camera2"
-    ip: "192.168.1.102"
-    port: 554
-    username: "admin"
-    password: "zl10020101!"
+  - name: "客厅摄像头"
+    rtsp_url: "rtsp://admin:zl10020101!@172.154.200.150:554/h264/ch1/main/av_stream"
 
 # 录制配置
 recording:
