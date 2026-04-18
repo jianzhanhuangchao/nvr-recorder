@@ -7,7 +7,8 @@ RUN apk add --no-cache \
     yq \
     coreutils \
     findutils \
-    tzdata
+    tzdata \
+    curl
 
 # 设置时区
 ENV TZ=Asia/Shanghai
@@ -17,10 +18,13 @@ RUN mkdir -p /recordings /scripts /config
 
 # 复制脚本
 COPY recorder.sh /scripts/recorder.sh
-COPY config.yaml /config/config.yaml
 
 # 赋予执行权限
 RUN chmod +x /scripts/recorder.sh
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD pgrep ffmpeg || exit 1
 
 # 运行脚本
 CMD ["/scripts/recorder.sh"]
