@@ -133,13 +133,18 @@ record_camera() {
         # -reset_timestamps 1: 重置时间戳
         # -y: 覆盖输出文件
         # -stimeout: 设置 RTSP 超时（微秒）
-        ffmpeg -stimeout 5000000 -i "$rtsp_url" \
+        ffmpeg \
+            -rtsp_transport tcp \
+            -rw_timeout 10000000 \
+            -stimeout 10000000 \
+            -fflags nobuffer \
+            -flags low_delay \
+            -i "$rtsp_url" \
             -c copy \
             -t $SEGMENT_DURATION \
             -reset_timestamps 1 \
             -y \
-            "$temp_path" \
-            2>/dev/null
+            "$temp_path"
         
         # 检查录制是否成功
         if [ $? -eq 0 ] && [ -f "$temp_path" ] && [ -s "$temp_path" ]; then
