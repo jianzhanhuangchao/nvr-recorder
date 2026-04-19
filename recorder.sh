@@ -136,7 +136,6 @@ record_camera() {
         ffmpeg \
             -rtsp_transport tcp \
             -rw_timeout 10000000 \
-            -stimeout 10000000 \
             -fflags nobuffer \
             -flags low_delay \
             -i "$rtsp_url" \
@@ -144,7 +143,8 @@ record_camera() {
             -t $SEGMENT_DURATION \
             -reset_timestamps 1 \
             -y \
-            "$temp_path"
+            "$temp_path" \
+            2>/dev/null
         
         # 检查录制是否成功
         if [ $? -eq 0 ] && [ -f "$temp_path" ] && [ -s "$temp_path" ]; then
